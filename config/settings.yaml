@@ -1,0 +1,15 @@
+data:
+  exchange: binance
+  base_url: "https://data-api.binance.vision"
+  symbols:
+    - "BTCUSDT"
+    - "ETHUSDT"
+  interval: "1h"
+  start_date: "2023-01-01"
+  end_date: "2024-01-01"
+  request_limit: 1000
+  request_delay_seconds: 0.3
+  raw_data_dir: "data/raw"
+
+logging:
+  level: "INFO"
