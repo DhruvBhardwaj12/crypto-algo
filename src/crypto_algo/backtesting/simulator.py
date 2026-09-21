@@ -175,3 +175,5 @@ def buy_and_hold_equity(df: pd.DataFrame, initial_equity: float) -> pd.Series:
     eq = initial_equity * closes / closes[0]
     return pd.Series(eq, index=df["open_time"], name="buy_and_hold")
     
+    # Public alias so other modules can recompute metrics on a sliced equity series.
+compute_metrics = _compute_metrics
