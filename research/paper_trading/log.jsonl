@@ -1,2 +1,3 @@
 {"ts_utc": "2026-09-22 19:15:44.493759+00:00", "bar_open_time": "2026-09-22 18:00:00+00:00", "close": 86403.2, "signal_for_next": 1, "current_position": 0, "equity": 10000.0, "n_trades": 0, "n_wins": 0, "n_losses": 0}
 {"ts_utc": "2026-09-22 20:00:13.706964+00:00", "bar_open_time": "2026-09-22 19:00:00+00:00", "close": 86146.1, "signal_for_next": 1, "current_position": 1, "equity": 9965.259035544981, "n_trades": 0, "n_wins": 0, "n_losses": 0}
+{"ts_utc": "2026-09-22 21:00:22.768613+00:00", "bar_open_time": "2026-09-22 20:00:00+00:00", "close": 86229.9, "signal_for_next": 1, "current_position": 1, "equity": 9974.952901049961, "n_trades": 0, "n_wins": 0, "n_losses": 0}

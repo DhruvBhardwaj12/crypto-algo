@@ -2,7 +2,7 @@
   "symbol": "BTCUSDT",
   "strategy_name": "donchian_rsi",
   "initial_equity": 10000.0,
-  "equity": 9965.259035544981,
+  "equity": 9974.952901049961,
   "position": 1,
   "units": 0.11567858597829711,
   "entry_price": 86403.2,
@@ -11,7 +11,7 @@
   "n_trades": 0,
   "n_wins": 0,
   "n_losses": 0,
-  "last_bar_time": "2026-09-22 19:00:00+00:00",
+  "last_bar_time": "2026-09-22 20:00:00+00:00",
   "pending_signal": null,
   "pending_signal_bar": null
 }
