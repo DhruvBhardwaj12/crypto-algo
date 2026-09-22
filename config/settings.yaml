@@ -1,10 +1,12 @@
 data:
   exchange: binance
   base_url: "https://data-api.binance.vision"
+  futures_base_url: "https://fapi.binance.com"
   symbols:
     - "BTCUSDT"
     - "ETHUSDT"
   interval: "1d"
+  futures_interval: "4h"
   start_date: "2020-01-01"
   end_date: "2025-01-01"
   request_limit: 1000
@@ -13,3 +15,4 @@ data:
 
 logging:
   level: "INFO"
+  
