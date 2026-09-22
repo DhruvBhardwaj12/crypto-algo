@@ -1,22 +1,13 @@
-# Decision Log
 
-## Data
+## 2026-09-23 — Multiple-testing rule for lab experiments
 
-### 2023-03-24 13:00 UTC — Missing candle in BTCUSDT and ETHUSDT 1h
+**Decision:** Any lab experiment that tests more than 3 hypotheses
+(e.g., 24 hourly means, 8 lookbacks, multiple symbols) must report
+significance at a Bonferroni-corrected threshold, not at naive α=0.05.
 
-**Finding:** Both BTCUSDT and ETHUSDT 1h datasets are missing the candle
-at `2023-03-24 13:00:00 UTC`. This is confirmed to be a synchronous gap
-across symbols, which strongly suggests an exchange-side event, not a
-fetcher bug.
+**Reason:** LAB-003C tested 24 hourly means on 2 symbols = 48 hypotheses.
+Naive α=0.05 would expect ~2 false positives. Without correction we'd
+mistakenly promote noise to "signal."
 
-**Action taken:** None. The gap is recorded here but not filled,
-interpolated, or removed. Filling introduces fake information that can
-be silently exploited by a strategy.
-
-**Consequence for downstream code:**
-- The feature engine must handle gaps without assuming a rigid hourly grid.
-- Strategies must be robust to isolated missing candles.
-- Backtests covering this period will see one fewer hour of data. This is
-  realistic — a live trader would have faced the same hole.
-
-**Status:** Accepted as-is.
+**Rule:** if an effect doesn't survive Bonferroni (or equivalent), we
+do not treat it as real. Log and move on.
