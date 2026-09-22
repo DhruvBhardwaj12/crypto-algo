@@ -1,0 +1,21 @@
+strategy:
+  name: tsmom
+  symbol: BTCUSDT
+  interval: 4h
+
+params:
+  # Chosen by walk-forward on BTC (LAB-001). All 4 walk-forward windows
+  # independently selected lookback=168. Do NOT change without re-validating.
+  lookback: 168
+
+execution:
+  initial_equity: 10000.0
+  cost_bps_per_side: 5.0
+
+paths:
+  state_file: "research/paper_trading/tsmom_BTCUSDT_state.json"
+  log_file: "research/paper_trading/tsmom_BTCUSDT_log.jsonl"
+
+poll:
+  interval_seconds: 120
+  

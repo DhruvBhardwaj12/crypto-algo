@@ -1,0 +1,22 @@
+strategy:
+  name: rsi2_5m
+  symbol: BTCUSDT
+  interval: 5m
+
+params:
+  rsi_period: 2
+  entry_threshold: 10.0
+  exit_threshold: 70.0
+
+execution:
+  # Small equity on purpose: makes the cost drag visually obvious in the log.
+  initial_equity: 1000.0
+  cost_bps_per_side: 5.0
+
+paths:
+  state_file: "research/paper_trading/rsi2_5m_BTCUSDT_state.json"
+  log_file: "research/paper_trading/rsi2_5m_BTCUSDT_log.jsonl"
+
+poll:
+  interval_seconds: 120
+  
