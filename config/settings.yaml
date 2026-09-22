@@ -8,9 +8,8 @@ data:
   interval: "1d"
   futures_interval: "4h"
   futures_intervals_to_fetch:
-    - "1h"
-    - "4h"
-  start_date: "2020-01-01"
+    - "5m"
+  start_date: "2023-01-01"
   end_date: "2025-01-01"
   request_limit: 1000
   request_delay_seconds: 0.3
