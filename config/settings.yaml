@@ -7,6 +7,9 @@ data:
     - "ETHUSDT"
   interval: "1d"
   futures_interval: "4h"
+  futures_intervals_to_fetch:
+    - "1h"
+    - "4h"
   start_date: "2020-01-01"
   end_date: "2025-01-01"
   request_limit: 1000

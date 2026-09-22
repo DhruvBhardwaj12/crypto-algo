@@ -1,8 +1,6 @@
 """Fetch Binance USDT-M futures klines and funding rate history.
 
-Saves to:
-  data/raw/binance/futures/<SYMBOL>/<interval>/<start>_<end>.parquet
-  data/raw/binance/funding/<SYMBOL>/<start>_<end>.parquet
+Fetches all intervals listed in `futures_intervals_to_fetch`.
 
 Run:
     uv run python scripts/fetch_futures_data.py
@@ -28,27 +26,26 @@ def main() -> None:
 
     base = cfg["futures_base_url"]
     raw = Path(cfg["raw_data_dir"])
-    interval = cfg["futures_interval"]
+    intervals = cfg["futures_intervals_to_fetch"]
     start = cfg["start_date"]
     end = cfg["end_date"]
 
     for symbol in cfg["symbols"]:
-        # Futures klines
-        klines = fetch_futures_klines(
-            base_url=base,
-            symbol=symbol,
-            interval=interval,
-            start_date=start,
-            end_date=end,
-            request_limit=cfg["request_limit"],
-            request_delay_seconds=cfg["request_delay_seconds"],
-        )
-        save_parquet(
-            klines,
-            raw / "binance" / "futures" / symbol / interval / f"{start}_{end}.parquet",
-        )
+        for interval in intervals:
+            klines = fetch_futures_klines(
+                base_url=base,
+                symbol=symbol,
+                interval=interval,
+                start_date=start,
+                end_date=end,
+                request_limit=cfg["request_limit"],
+                request_delay_seconds=cfg["request_delay_seconds"],
+            )
+            save_parquet(
+                klines,
+                raw / "binance" / "futures" / symbol / interval / f"{start}_{end}.parquet",
+            )
 
-        # Funding rates
         funding = fetch_funding_rates(
             base_url=base,
             symbol=symbol,
