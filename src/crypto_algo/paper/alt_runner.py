@@ -1,9 +1,4 @@
-"""Generic paper trader runner for TSMOM and 5m RSI(2).
-
-Shares the state/feed/executor infrastructure with the existing Donchian
-runner. The only difference is the signal function, dispatched by the
-`strategy.name` field in the config.
-"""
+"""Paper trader for TSMOM and 5m RSI(2). Now with risk engine integration."""
 
 from __future__ import annotations
 
@@ -17,6 +12,7 @@ from loguru import logger
 from crypto_algo.paper.executor import mark_to_market, simulate_fill
 from crypto_algo.paper.feed import fetch_recent_klines
 from crypto_algo.paper.state import PaperState
+from crypto_algo.risk.engine import RiskDecision, RiskEngine
 from crypto_algo.strategies.rsi2_intraday import rsi2_intraday_target
 from crypto_algo.strategies.tsmom import tsmom_target
 
@@ -27,19 +23,19 @@ def _append_log(log_path: Path, record: dict) -> None:
         f.write(json.dumps(record, default=str) + "\n")
 
 
-def _tsmom_signal(df: pd.DataFrame, params: dict) -> int:
+def _tsmom_signal(df: pd.DataFrame, params: dict) -> float:
     target = tsmom_target(df["close"], lookback_n=int(params["lookback"]))
-    return int(target.iloc[-1])
+    return float(target.iloc[-1])
 
 
-def _rsi2_5m_signal(df: pd.DataFrame, params: dict) -> int:
+def _rsi2_5m_signal(df: pd.DataFrame, params: dict) -> float:
     target = rsi2_intraday_target(
         df,
         rsi_period=int(params["rsi_period"]),
         entry_threshold=float(params["entry_threshold"]),
         exit_threshold=float(params["exit_threshold"]),
     )
-    return int(target.iloc[-1])
+    return float(target.iloc[-1])
 
 
 _SIGNAL_DISPATCH = {
@@ -48,11 +44,51 @@ _SIGNAL_DISPATCH = {
 }
 
 
+def _apply_risk(
+    engine: RiskEngine,
+    strategy_name: str,
+    symbol: str,
+    equity: float,
+    current_units: float,
+    fill_price: float,
+    proposed_signal: float,
+    state: PaperState,
+    log_path: Path,
+) -> float:
+    """Run risk engine. Returns approved target position (may be reduced/rejected)."""
+    current_weights = pd.Series({symbol: (current_units * fill_price) / equity if equity > 0 else 0.0})
+    proposed_weights = pd.Series({symbol: proposed_signal})
+
+    report = engine.evaluate(equity, current_weights, proposed_weights)
+
+    if report.decision == RiskDecision.REJECT:
+        state.n_risk_rejections += 1
+        logger.warning("RISK REJECT {} {}: {}", strategy_name, symbol, report.reasons)
+        _append_log(log_path, {
+            "event": "risk_reject", "reasons": report.reasons,
+            "proposed": proposed_signal,
+        })
+        return 0.0
+    if report.decision == RiskDecision.REDUCE:
+        state.n_risk_reductions += 1
+        reduced = float(report.approved_weights.get(symbol, 0.0))
+        logger.info("RISK REDUCE {} {}: {:.2f} -> {:.2f}",
+                    strategy_name, symbol, proposed_signal, reduced)
+        _append_log(log_path, {
+            "event": "risk_reduce", "reasons": report.reasons,
+            "proposed": proposed_signal, "approved": reduced,
+        })
+        return reduced
+
+    return proposed_signal
+
+
 def run_once(
     cfg: dict,
     state: PaperState,
     state_path: Path,
     log_path: Path,
+    engine: RiskEngine,
 ) -> None:
     symbol = cfg["strategy"]["symbol"]
     interval = cfg["strategy"]["interval"]
@@ -69,7 +105,6 @@ def run_once(
     now = pd.Timestamp.now(tz="UTC")
     closed = df[df["close_time"] < now].reset_index(drop=True)
     if len(closed) < 60:
-        logger.warning("Insufficient closed history ({} bars).", len(closed))
         return
 
     last_closed = closed.iloc[-1]
@@ -78,22 +113,44 @@ def run_once(
     if state.last_bar_time == last_closed_open:
         return
 
-    # Execute pending signal at this bar's open.
+    # Update risk engine's view of equity and roll the day if needed.
+    current_equity = mark_to_market(state.cash, state.units, float(last_closed["close"]))
+    engine.update_equity(current_equity)
+
+    today = now.strftime("%Y-%m-%d")
+    if state.last_day != today:
+        state.day_start_equity = current_equity
+        state.last_day = today
+        engine.new_day(current_equity)
+
+    state.peak_equity = max(state.peak_equity, current_equity)
+
+    # Execute pending signal.
     if state.pending_signal is not None:
+        approved_signal = _apply_risk(
+            engine=engine,
+            strategy_name=strategy_name,
+            symbol=symbol,
+            equity=current_equity,
+            current_units=state.units,
+            fill_price=float(last_closed["open"]),
+            proposed_signal=state.pending_signal,
+            state=state,
+            log_path=log_path,
+        )
         outcome = simulate_fill(
-            equity=state.equity,
-            position=state.position,
+            cash=state.cash,
             units=state.units,
+            equity=current_equity,
             entry_price=state.entry_price,
             entry_time=state.entry_time,
             entry_equity=state.entry_equity,
-            target_position=int(state.pending_signal),
+            target_position=approved_signal,
             fill_price=float(last_closed["open"]),
             fill_time=str(last_closed["open_time"]),
             cost_bps_per_side=cost_bps,
         )
-        state.equity = outcome.equity
-        state.position = outcome.position
+        state.cash = outcome.cash
         state.units = outcome.units
         state.entry_price = outcome.entry_price
         state.entry_time = outcome.entry_time
@@ -107,18 +164,13 @@ def run_once(
         state.pending_signal = None
         state.pending_signal_bar = None
 
-    # Mark-to-market with this bar's close.
-    mtm = mark_to_market(
-        units=state.units,
-        position=state.position,
-        equity_when_flat=state.equity,
-        close_price=float(last_closed["close"]),
-    )
-    state.equity = mtm
-
-    # New signal for this bar.
+    # Compute new signal.
     new_signal = signal_fn(closed, params)
-    if new_signal != state.position:
+    mtm_equity = mark_to_market(state.cash, state.units, float(last_closed["close"]))
+
+    # Compare new signal to current position (as fraction of equity).
+    current_pos_frac = (state.units * float(last_closed["close"])) / mtm_equity if mtm_equity > 0 else 0.0
+    if abs(new_signal - current_pos_frac) > 1e-6:
         state.pending_signal = new_signal
         state.pending_signal_bar = last_closed_open
 
@@ -132,24 +184,29 @@ def run_once(
         "bar_open_time": last_closed_open,
         "close": float(last_closed["close"]),
         "signal_for_next": new_signal,
-        "current_position": state.position,
-        "equity": state.equity,
+        "current_pos_frac": current_pos_frac,
+        "equity": mtm_equity,
+        "cash": state.cash,
+        "units": state.units,
         "n_trades": state.n_trades,
         "n_wins": state.n_wins,
         "n_losses": state.n_losses,
+        "n_risk_rejections": state.n_risk_rejections,
+        "n_risk_reductions": state.n_risk_reductions,
     })
 
     logger.info(
-        "{} {} bar={} close={:.4f} pos={} eq={:.2f} trades={}",
+        "{} {} bar={} close={:.4f} pos={:.2f} eq={:.2f} trades={} rej={}",
         strategy_name, symbol, last_closed_open,
-        float(last_closed["close"]), state.position,
-        state.equity, state.n_trades,
+        float(last_closed["close"]), current_pos_frac,
+        mtm_equity, state.n_trades, state.n_risk_rejections,
     )
 
 
 def run_forever(cfg: dict) -> None:
     state_path = Path(cfg["paths"]["state_file"])
     log_path = Path(cfg["paths"]["log_file"])
+    risk_cfg = Path(cfg["risk"]["config_file"])
 
     state = PaperState.load_or_init(
         state_path,
@@ -157,18 +214,19 @@ def run_forever(cfg: dict) -> None:
         strategy_name=cfg["strategy"]["name"],
         initial_equity=cfg["execution"]["initial_equity"],
     )
+    engine = RiskEngine(risk_cfg)
 
     logger.info(
         "Paper trader started: {} {} (equity={:.2f}, trades={})",
         cfg["strategy"]["name"], cfg["strategy"]["symbol"],
-        state.equity, state.n_trades,
+        state.cash, state.n_trades,
     )
 
     interval = cfg["poll"]["interval_seconds"]
     try:
         while True:
             try:
-                run_once(cfg, state, state_path, log_path)
+                run_once(cfg, state, state_path, log_path, engine)
             except Exception as exc:  # noqa: BLE001
                 logger.exception("Iteration failed: {}", exc)
             time.sleep(interval)

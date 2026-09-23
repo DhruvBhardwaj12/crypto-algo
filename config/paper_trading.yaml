@@ -23,6 +23,6 @@ paths:
 
 poll:
   interval_seconds: 60
-  risk:
+
+risk:
   config_file: "config/risk_limits.yaml"
-  

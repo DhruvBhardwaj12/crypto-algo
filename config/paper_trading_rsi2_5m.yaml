@@ -9,7 +9,6 @@ params:
   exit_threshold: 70.0
 
 execution:
-  # Small equity on purpose: makes the cost drag visually obvious in the log.
   initial_equity: 1000.0
   cost_bps_per_side: 5.0
 
@@ -19,4 +18,7 @@ paths:
 
 poll:
   interval_seconds: 120
+
+risk:
+  config_file: "config/risk_limits.yaml"
   

@@ -135,7 +135,15 @@ def run_once(
         "n_wins": state.n_wins,
         "n_losses": state.n_losses,
     })
-
+    logger.info(
+        "donchian_rsi {} bar={} close={:.2f} pos={} eq={:.2f} trades={}",
+        cfg["strategy"]["symbol"], last_closed_open,
+        float(last_closed["close"]),
+        state.position,
+        state.equity,
+        state.n_trades,
+    )
+    
     logger.info(
         "bar={} close={:.2f} pos={} equity={:.2f} trades={}",
         last_closed_open, float(last_closed["close"]), state.position, state.equity, state.n_trades,
@@ -151,11 +159,6 @@ def run_forever(cfg: dict) -> None:
         symbol=cfg["strategy"]["symbol"],
         strategy_name=cfg["strategy"]["name"],
         initial_equity=cfg["execution"]["initial_equity"],
-    )
-
-    logger.info(
-        "Paper trader started: {} {} (equity={:.2f}, trades={})",
-        cfg["strategy"]["name"], cfg["strategy"]["symbol"], state.equity, state.n_trades,
     )
 
     interval = cfg["poll"]["interval_seconds"]
