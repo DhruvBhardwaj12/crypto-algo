@@ -14,7 +14,7 @@ params:
   rsi_4h_exit: 48.0
 
 execution:
-  initial_equity: 10000.0
+  initial_equity: 120.0
   cost_bps_per_side: 5.0
 
 paths:
@@ -23,4 +23,3 @@ paths:
 
 poll:
   interval_seconds: 60
-  

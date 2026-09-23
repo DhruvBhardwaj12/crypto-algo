@@ -1,0 +1,2 @@
+{"ts_utc": "2026-09-22 20:44:35.548103+00:00", "strategy": "tsmom", "symbol": "BTCUSDT", "bar_open_time": "2026-09-22 16:00:00+00:00", "close": 86146.1, "signal_for_next": 1, "current_position": 0, "equity": 10000.0, "n_trades": 0, "n_wins": 0, "n_losses": 0}
+{"ts_utc": "2026-09-23 00:01:26.508921+00:00", "strategy": "tsmom", "symbol": "BTCUSDT", "bar_open_time": "2026-09-22 20:00:00+00:00", "close": 86158.6, "signal_for_next": 1, "current_position": 1, "equity": 9996.438693755501, "n_trades": 0, "n_wins": 0, "n_losses": 0}

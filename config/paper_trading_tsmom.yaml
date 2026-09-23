@@ -4,12 +4,10 @@ strategy:
   interval: 4h
 
 params:
-  # Chosen by walk-forward on BTC (LAB-001). All 4 walk-forward windows
-  # independently selected lookback=168. Do NOT change without re-validating.
   lookback: 168
 
 execution:
-  initial_equity: 10000.0
+  initial_equity: 120.0
   cost_bps_per_side: 5.0
 
 paths:
@@ -18,4 +16,4 @@ paths:
 
 poll:
   interval_seconds: 120
-  a
+  
