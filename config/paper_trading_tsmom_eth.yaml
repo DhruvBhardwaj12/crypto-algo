@@ -1,0 +1,20 @@
+strategy:
+  name: tsmom
+  symbol: ETHUSDT
+  interval: 4h
+
+params:
+  # From LAB-001 walk-forward on ETH.
+  lookback: 84
+
+execution:
+  initial_equity: 120.0
+  cost_bps_per_side: 5.0
+
+paths:
+  state_file: "research/paper_trading/tsmom_ETHUSDT_state.json"
+  log_file: "research/paper_trading/tsmom_ETHUSDT_log.jsonl"
+
+poll:
+  interval_seconds: 120
+  
