@@ -37,12 +37,34 @@ def _rsi2_5m_signal(df: pd.DataFrame, params: dict) -> float:
     )
     return float(target.iloc[-1])
 
+def _donchian_rsi_signal(
+    df_1h: pd.DataFrame,
+    df_4h: pd.DataFrame,
+    params: dict,
+) -> float:
+    """Donchian + RSI multi-timeframe. Needs both 1H and 4H frames."""
+    from crypto_algo.strategies.donchian_rsi import donchian_rsi_target, tag_with_4h_regime
+
+    rsi_4h = tag_with_4h_regime(df_1h, df_4h, rsi_period=int(params["rsi_4h_period"]))
+    target = donchian_rsi_target(
+        df_1h,
+        rsi_4h,
+        donchian_entry_lookback=int(params["dc"]),
+        donchian_exit_lookback=int(params["dc_exit"]),
+        rsi_1h_period=int(params["rsi_1h_period"]),
+        rsi_1h_entry=float(params["rsi_1h_entry"]),
+        rsi_4h_entry=float(params["rsi_4h_entry"]),
+        rsi_4h_exit=float(params["rsi_4h_exit"]),
+    )
+    return float(target.iloc[-1])
+
+
 
 _SIGNAL_DISPATCH = {
     "tsmom": _tsmom_signal,
     "rsi2_5m": _rsi2_5m_signal,
+    "donchian_rsi": None,  # handled specially below (needs two timeframes)
 }
-
 
 def _apply_risk(
     engine: RiskEngine,
@@ -98,9 +120,15 @@ def run_once(
 
     if strategy_name not in _SIGNAL_DISPATCH:
         raise ValueError(f"Unknown strategy: {strategy_name}")
-    signal_fn = _SIGNAL_DISPATCH[strategy_name]
 
-    df = fetch_recent_klines(symbol, interval, limit=500)
+    # Multi-timeframe strategies fetch an additional frame.
+    df_4h = None
+    if strategy_name == "donchian_rsi":
+        df_1h = fetch_recent_klines(symbol, "1h", limit=500)
+        df_4h = fetch_recent_klines(symbol, "4h", limit=500)
+        df = df_1h
+    else:
+        df = fetch_recent_klines(symbol, interval, limit=500)
 
     now = pd.Timestamp.now(tz="UTC")
     closed = df[df["close_time"] < now].reset_index(drop=True)
@@ -164,8 +192,11 @@ def run_once(
         state.pending_signal = None
         state.pending_signal_bar = None
 
-    # Compute new signal.
-    new_signal = signal_fn(closed, params)
+        # Compute new signal.
+    if strategy_name == "donchian_rsi":
+        new_signal = _donchian_rsi_signal(closed, df_4h, params)
+    else:
+        new_signal = _SIGNAL_DISPATCH[strategy_name](closed, params)
     mtm_equity = mark_to_market(state.cash, state.units, float(last_closed["close"]))
 
     # Compare new signal to current position (as fraction of equity).
@@ -232,4 +263,3 @@ def run_forever(cfg: dict) -> None:
             time.sleep(interval)
     except KeyboardInterrupt:
         logger.info("Paper trader stopped by user. State saved.")
-        

@@ -1,7 +1,4 @@
-"""Run the paper trader for EXP-004 (Donchian + RSI).
-
-Press Ctrl+C to stop. State persists to disk; restart resumes from where
-it left off.
+"""Run the Donchian + RSI paper trader via the unified alt_runner.
 
 Run:
     uv run python scripts/paper_trade_donchian_rsi.py
@@ -9,11 +6,9 @@ Run:
 
 from __future__ import annotations
 
-from pathlib import Path
-
 import yaml
 
-from crypto_algo.paper.runner import run_forever
+from crypto_algo.paper.alt_runner import run_forever
 
 
 def main() -> None:

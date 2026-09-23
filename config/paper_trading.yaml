@@ -1,8 +1,7 @@
 strategy:
   name: donchian_rsi
   symbol: BTCUSDT
-  entry_interval: 1h
-  regime_interval: 4h
+  interval: 1h
 
 params:
   dc: 55
@@ -18,11 +17,12 @@ execution:
   cost_bps_per_side: 5.0
 
 paths:
-  state_file: "research/paper_trading/state.json"
-  log_file: "research/paper_trading/log.jsonl"
+  state_file: "research/paper_trading/donchian_rsi_BTCUSDT_state.json"
+  log_file: "research/paper_trading/donchian_rsi_BTCUSDT_log.jsonl"
 
 poll:
   interval_seconds: 60
 
 risk:
   config_file: "config/risk_limits.yaml"
+  
