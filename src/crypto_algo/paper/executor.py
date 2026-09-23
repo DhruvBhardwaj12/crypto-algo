@@ -1,4 +1,13 @@
-"""Simulated fill logic. Long-only, position size = 100% of equity."""
+"""Simulated fill logic — cash + units representation.
+
+State:
+  - cash: USD available
+  - units: asset units held (0 if flat)
+  - equity = cash + units * current_price
+
+Target position is a fraction in [0, 1] representing desired exposure.
+At execution price P: desired_units = (target * equity) / P
+"""
 
 from __future__ import annotations
 
@@ -9,8 +18,7 @@ from loguru import logger
 
 @dataclass
 class FillOutcome:
-    equity: float
-    position: int
+    cash: float
     units: float
     entry_price: float | None
     entry_time: str | None
@@ -21,67 +29,74 @@ class FillOutcome:
 
 def simulate_fill(
     *,
-    equity: float,
-    position: int,
+    cash: float,
     units: float,
+    equity: float,
     entry_price: float | None,
     entry_time: str | None,
     entry_equity: float | None,
-    target_position: int,
+    target_position: float,
     fill_price: float,
     fill_time: str,
     cost_bps_per_side: float,
 ) -> FillOutcome:
-    """Execute target_position at fill_price. Update equity/units/position."""
+    """Execute to reach target_position. Returns new cash/units state."""
     cf = cost_bps_per_side / 10_000.0
+    target_position = max(0.0, min(1.0, float(target_position)))
 
-    if position == target_position:
-        return FillOutcome(equity, position, units, entry_price, entry_time, entry_equity, None, None)
+    current_position_value = units * fill_price
+    current_position_pct = (current_position_value / equity) if equity > 0 else 0.0
 
-    if position == 0 and target_position == 1:
-        # BUY
-        cost = equity * cf
-        investable = equity - cost
-        new_units = investable / fill_price
-        logger.info("BUY  {} @ {:.2f}  cost={:.2f}  units={:.6f}", fill_time, fill_price, cost, new_units)
-        return FillOutcome(
-            equity=investable,
-            position=1,
-            units=new_units,
-            entry_price=fill_price,
-            entry_time=fill_time,
-            entry_equity=equity,
-            trade_pnl=None,
-            trade_won=None,
-        )
+    if abs(current_position_pct - target_position) < 1e-9:
+        return FillOutcome(cash, units, entry_price, entry_time, entry_equity, None, None)
 
-    if position == 1 and target_position == 0:
-        # SELL
-        gross = units * fill_price
-        cost = gross * cf
-        final_cash = gross - cost
-        trade_pnl = final_cash - (entry_equity if entry_equity is not None else equity)
-        trade_won = trade_pnl > 0
-        logger.info(
-            "SELL {} @ {:.2f}  gross={:.2f}  cost={:.2f}  pnl={:.2f}",
-            fill_time, fill_price, gross, cost, trade_pnl,
-        )
-        return FillOutcome(
-            equity=final_cash,
-            position=0,
-            units=0.0,
-            entry_price=None,
-            entry_time=None,
-            entry_equity=None,
-            trade_pnl=trade_pnl,
-            trade_won=trade_won,
-        )
+    target_value = target_position * equity
 
-    raise ValueError(f"Unsupported transition {position} -> {target_position}")
+    if target_value > current_position_value:
+        # BUY the difference
+        buy_value = target_value - current_position_value
+        cost = buy_value * cf
+        cash -= (buy_value + cost)
+        units += buy_value / fill_price
+
+        if current_position_pct < 1e-9:
+            # Opening from flat
+            entry_price = fill_price
+            entry_time = fill_time
+            entry_equity = equity
+            logger.info("BUY {:.0%} {} @ {:.4f} cost={:.4f}",
+                        target_position, fill_time, fill_price, cost)
+
+        return FillOutcome(cash, units, entry_price, entry_time, entry_equity, None, None)
+
+    else:
+        # SELL the difference
+        sell_value = current_position_value - target_value
+        sell_units = sell_value / fill_price
+        cost = sell_value * cf
+        cash += (sell_value - cost)
+        units -= sell_units
+
+        if target_position < 1e-9:
+            # Closing to flat
+            trade_pnl = (sell_value - cost) - (units + sell_units) * 0 - 0
+            # Simpler: entry equity was current equity when we opened.
+            # When we opened, we deployed entry_equity * original_position.
+            # Here, trade_pnl = total equity now - entry_equity_at_open.
+            # Approximate: pnl = current equity after close - entry_equity
+            new_equity = cash + units * fill_price
+            trade_pnl = new_equity - (entry_equity if entry_equity is not None else new_equity)
+            trade_won = trade_pnl > 0
+            logger.info("SELL {} @ {:.4f} cost={:.4f} pnl={:.4f}",
+                        fill_time, fill_price, cost, trade_pnl)
+            return FillOutcome(
+                cash=cash, units=0.0,
+                entry_price=None, entry_time=None, entry_equity=None,
+                trade_pnl=trade_pnl, trade_won=trade_won,
+            )
+
+        return FillOutcome(cash, units, entry_price, entry_time, entry_equity, None, None)
 
 
-def mark_to_market(units: float, position: int, equity_when_flat: float, close_price: float) -> float:
-    """Current MTM equity."""
-    if position == 0:
-        return equity_when_flat
-    return units * close_price
+def mark_to_market(cash: float, units: float, close_price: float) -> float:
+    return cash + units * close_price
