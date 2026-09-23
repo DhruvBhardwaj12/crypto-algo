@@ -61,6 +61,20 @@ def main() -> None:
 
     logger.success("All futures data fetched.")
 
+    for symbol in cfg["symbols"]:
+        for interval in intervals:
+            try:
+                klines = fetch_futures_klines(...)
+                save_parquet(...)
+            except Exception as exc:
+                logger.warning("Skipping {} {}: {}", symbol, interval, exc)
+                continue
+
+        try:
+            funding = fetch_funding_rates(...)
+            save_parquet(...)
+        except Exception as exc:
+            logger.warning("Skipping funding {}: {}", symbol, exc)
 
 if __name__ == "__main__":
     main()

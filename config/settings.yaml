@@ -13,7 +13,6 @@ data:
     - "AVAXUSDT"
     - "LINKUSDT"
     - "DOTUSDT"
-    - "MATICUSDT"
     - "TRXUSDT"
     - "LTCUSDT"
     - "ATOMUSDT"
@@ -27,12 +26,11 @@ data:
   futures_interval: "4h"
   futures_intervals_to_fetch:
     - "4h"
-  start_date: "2020-01-01"
-  end_date: "2025-01-01"
+  start_date: "2025-01-01"
+  end_date: "2026-09-23"
   request_limit: 1000
   request_delay_seconds: 0.3
   raw_data_dir: "data/raw"
 
 logging:
   level: "INFO"
-  

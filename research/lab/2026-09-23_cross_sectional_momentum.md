@@ -1,48 +1,46 @@
-# LAB-20260923 — Cross-Sectional Momentum
+## Recent OOS test (2025-01-01 to 2026-09-23)
 
-**Hypothesis:** Rank a universe of 20 liquid crypto futures by trailing
-7-day return. Long the top 3, short the bottom 3. Equal-weight, market-
-neutral. Exploit the documented cross-sectional momentum effect.
+Frozen params (84/3/2/6 from 2020-2025 walk-forward). No re-optimization.
 
-**Mechanism:** Cross-sectional momentum has been documented in equities,
-commodities, and currencies for decades. Crypto-specific drivers:
-retail attention cycles, narrative flows, and limited arbitrage capital
-between altcoin segments.
+| bps/side | Total Ret | CAGR | Sharpe | Max DD |
+|---|---|---|---|---|
+| 5  | -1.9%   | -1.1%  | +0.08 | -33.2% |
+| 10 | -14.7%  | -8.8%  | -0.24 | -38.6% |
+| 15 | -25.8%  | -15.9% | -0.56 | -44.6% |
+| 25 | -43.9%  | -28.5% | -1.21 | -55.9% |
 
-**Data:** 20 Binance USDT-M perpetual futures, 4H bars, 2020-01-17 to
-2025-01-01. Symbols loaded: BTC, ETH, SOL, BNB, XRP, DOGE, ADA, AVAX,
-LINK, DOT, MATIC, TRX, LTC, ATOM, NEAR, FIL, ARB, OP, INJ, SUI.
+**Verdict: REJECTED for live trading.** The strategy validated
+historically but failed to make money in the 21 months following
+the validation period.
 
-**Parameters (chosen before running, no tuning):**
-- lookback = 42 bars (7 days)
-- n_long = 3, n_short = 3
-- rebalance_every = 6 bars (1 day)
-- cost = 5 bps per side, 10 bps round trip
+## Interpretation
 
-**Results:**
-- Final equity: $181,879 (from $10,000)
-- Total return: +1718.8%
-- CAGR: 79.4%
-- Sharpe: 1.67
-- Sortino: 2.50
-- Max drawdown: -32.1%
-- Calmar: 2.47
-- Annualized turnover: 230x
-- Mean daily turnover (weight units): 0.105
+This is the cleanest demonstration in the project of edge decay.
+The strategy passed:
+- Parameter sweep (98% positive)
+- Walk-forward (+1288% compounded, 4/4 windows)
+- Regime breakdown (5/5 years positive)
+- Bootstrap (5th percentile +0.999)
+- Survivorship test (4 fixed universes, all positive)
+- Cost sensitivity (survives 25 bps)
 
-**Verdict:** **PROMISING.** Best in-sample result of any strategy tested.
-Requires full validation (parameter sweep, walk-forward, regime,
-bootstrap) before consideration for paper trading.
+And still produced a near-zero result on fresh data. Historical
+validation is not a guarantee of forward performance.
 
-**Known concerns (must be addressed in validation):**
-1. **Survivorship bias.** Universe is 20 coins that exist today.
-   Excluded coins that died (LUNA, FTT, etc.). If the strategy would
-   have gone long a coin that later died, that loss is not in the data.
-2. **High turnover.** 230x/year at 5 bps/side = ~11.5% annual cost drag.
-   Real slippage on smaller-cap coins (ARB, OP, SUI, INJ) may exceed 5 bps.
-3. **Small effective N.** Only 6 active positions out of 20. Sample of
-   outcomes per rebalance is small.
-4. **Dynamic universe.** Early bars (2020) had only 6 symbols. Later bars
-   (2024) have 20. The strategy behavior changes over time.
+## Possible mechanisms for decay
 
-**Next step:** Full validation framework. If it passes, paper trading.
+1. **Competition.** Cross-sectional momentum is public knowledge.
+   As capital flows into crypto quant, the edge compresses.
+2. **Regime change.** Reduced dispersion among altcoins in 2025
+   (BTC-dominant regime). Cross-sectional needs dispersion.
+3. **Universe aging.** Our symbol list is now all highly correlated
+   majors. Less structural dispersion than 2020.
+
+We cannot distinguish these from a single period.
+
+## Implication for other strategies
+
+The two strategies currently paper-trading (EXP-004, TSMOM) must also
+be tested on recent data before any live consideration. If they also
+fail, we learn that the 2020-2025 period was favorable regime for
+trend-following that has since ended.
