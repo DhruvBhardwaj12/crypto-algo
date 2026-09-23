@@ -1,0 +1,32 @@
+# Hard risk limits. The risk engine will reject or reduce any order that
+# would violate these. There is no override mechanism.
+
+position:
+  # Maximum fraction of equity in any single position.
+  max_position_pct: 0.20
+
+  # Maximum total gross exposure across all positions.
+  max_gross_exposure: 1.00
+
+  # Maximum net directional exposure (|sum of signed weights|).
+  max_net_exposure: 0.50
+
+portfolio:
+  # Stop trading if equity drops by this fraction from the day's start.
+  max_daily_loss_pct: 0.03
+
+  # Stop trading if equity drops by this fraction from its peak.
+  max_drawdown_pct: 0.15
+
+  # Stop trading if equity drops by this fraction from initial capital.
+  max_total_loss_pct: 0.25
+
+operational:
+  # Kill switch. If True, no orders will be approved.
+  kill_switch: false
+
+  # Path to a file that, if present, triggers the kill switch.
+  kill_switch_file: "research/KILL_SWITCH"
+
+
+  
